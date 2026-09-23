@@ -1,0 +1,1971 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
+    <title>AIニュースまとめ</title>
+    <style>
+        /* ===== テーマ変数 ===== */
+        :root {
+            --bg: #f5f5f7;
+            --card-bg: #ffffff;
+            --text: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #aeaeb2;
+            --accent: #0071e3;
+            --border: #e5e5ea;
+            --header-bg: rgba(245, 245, 247, 0.85);
+            --badge-usecase: #34c759;
+            --badge-business: #ff9500;
+            --badge-tool: #5856d6;
+            --badge-research: #ff375f;
+            --badge-other: #8e8e93;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+            --read-opacity: 0.45;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000;
+                --card-bg: #1c1c1e;
+                --text: #f5f5f7;
+                --text-secondary: #98989d;
+                --text-tertiary: #636366;
+                --accent: #0a84ff;
+                --border: #38383a;
+                --header-bg: rgba(0, 0, 0, 0.85);
+                --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            }
+        }
+
+        /* ===== リセット & ベース ===== */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans',
+                         'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.65;
+            font-size: 15px;
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        /* ===== ヘッダー ===== */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--header-bg);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 0.5px solid var(--border);
+            padding: 12px 16px;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .header-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .article-count {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        /* ===== カテゴリフィルター ===== */
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 10px 16px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .filter-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-chip {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1.5px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        .filter-chip.active {
+            background: var(--accent);
+            color: #ffffff;
+            border-color: var(--accent);
+        }
+
+        /* ===== 日付セクション ===== */
+        .date-section {
+            padding: 0 16px;
+        }
+
+        .date-header {
+            position: sticky;
+            top: 62px;
+            z-index: 50;
+            padding: 16px 0 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: var(--bg);
+        }
+
+        /* ===== 記事カード ===== */
+        .card {
+            background: var(--card-bg);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 10px;
+            box-shadow: var(--card-shadow);
+            transition: opacity 0.3s ease;
+            position: relative;
+        }
+
+        .card.read {
+            opacity: var(--read-opacity);
+        }
+
+        .card-top {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #ffffff;
+            flex-shrink: 0;
+        }
+
+        .badge-活用事例 { background: var(--badge-usecase); }
+        .badge-ビジネス { background: var(--badge-business); }
+        .badge-ツール   { background: var(--badge-tool); }
+        .badge-研究     { background: var(--badge-research); }
+        .badge-その他   { background: var(--badge-other); }
+
+        .source-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        .lang-badge {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0 4px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.45;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        .card-title a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .card-summary {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .read-link {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent);
+            text-decoration: none;
+            padding: 4px 0;
+        }
+
+        .read-check {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        .read-check.checked {
+            color: var(--badge-usecase);
+            border-color: var(--badge-usecase);
+        }
+
+        /* ===== 空状態 ===== */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state-text {
+            font-size: 15px;
+        }
+
+        /* ===== フッター ===== */
+        .footer {
+            text-align: center;
+            padding: 24px 16px 40px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            line-height: 1.7;
+        }
+
+        /* ===== アニメーション ===== */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        .date-section:nth-child(1) .card { animation-delay: 0s; }
+        .date-section:nth-child(2) .card { animation-delay: 0.05s; }
+    </style>
+</head>
+<body>
+
+    <!-- ヘッダー -->
+    <div class="header">
+        <div class="header-top">
+            <div>
+                <div class="header-title">🤖 AIニュースまとめ</div>
+                <div class="header-meta">最終更新: 2026年9月24日 01:19</div>
+            </div>
+            <div class="article-count">65件</div>
+        </div>
+    </div>
+
+    <!-- カテゴリフィルター -->
+    <div class="filter-bar">
+        <button class="filter-chip active" data-category="all" onclick="filterCategory('all', this)">
+            すべて
+        </button>
+        
+        <button class="filter-chip" data-category="ツール" onclick="filterCategory('ツール', this)">
+            ツール
+        </button>
+        
+        <button class="filter-chip" data-category="ビジネス" onclick="filterCategory('ビジネス', this)">
+            ビジネス
+        </button>
+        
+        <button class="filter-chip" data-category="活用事例" onclick="filterCategory('活用事例', this)">
+            活用事例
+        </button>
+        
+        <button class="filter-chip" data-category="研究" onclick="filterCategory('研究', this)">
+            研究
+        </button>
+        
+    </div>
+
+    <!-- 記事一覧 -->
+    <main>
+        
+            
+            <div class="date-section">
+                <div class="date-header">📅 今日（2件）</div>
+                
+                <div class="card" data-category="ビジネス" data-id="05ccae6ce10b">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/23/youtube-music-gets-more-conversational-with-new-ai-features/" target="_blank" rel="noopener">YouTube Music gets more conversational with new AI features</a>
+                    </div>
+                    
+                    <div class="card-summary">YouTube is adding new AI-powered features to YouTube Music that aim to make it easier for listeners to discover music, explore artists, and find podcasts they may otherwise miss.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/23/youtube-music-gets-more-conversational-with-new-ai-features/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('05ccae6ce10b', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="0011846320c3">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">Gigazine</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://gigazine.net/news/20260924-gigazine-kindle-ranking-2026-08/" target="_blank" rel="noopener">Vlogにぴったりな小型カメラ「Osmo Pocket 4」レビュー記事・SF作家のAI論などAmazonで売上トップ10のGIGAZINE記事ランキング2026年8月版はコレ！</a>
+                    </div>
+                    
+                    <div class="card-summary">GIGAZINEの記事を電子化した書籍を対象に「2026年8月に出版した中で最もたくさん読まれた記事は何なのか？」がわかるランキングを作ってみました。Google検索の影響が大きい普段のアクセス解析記事と違い、Amazonならではのランキングとなっています。 続きを読む...</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://gigazine.net/news/20260924-gigazine-kindle-ranking-2026-08/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('0011846320c3', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <div class="date-section">
+                <div class="date-header">📅 昨日（34件）</div>
+                
+                <div class="card" data-category="ビジネス" data-id="715d84c123ef">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/23/strictlyvc-at-techcrunch-disrupt-2026-inside-the-changing-rules-of-venture-capital/" target="_blank" rel="noopener">StrictlyVC at TechCrunch Disrupt 2026: Inside the changing rules of venture capital</a>
+                    </div>
+                    
+                    <div class="card-summary">StrictlyVC joins TechCrunch Disrupt 2026 to discuss the changing VC landscape thanks to AI. Get your Investor Pass to join this exclusive session. Save $200 before September 25, 11:59 p.m. PT.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/23/strictlyvc-at-techcrunch-disrupt-2026-inside-the-changing-rules-of-venture-capital/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('715d84c123ef', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="05d2c500eb77">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/23/youtube-will-let-you-build-your-own-algorithm-with-ai/" target="_blank" rel="noopener">YouTube will let you build your own algorithm with AI</a>
+                    </div>
+                    
+                    <div class="card-summary">YouTube’s new custom feeds let users describe the videos they want to see in their own words, then use Gemini to build a personalized feed around the request.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/23/youtube-will-let-you-build-your-own-algorithm-with-ai/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('05d2c500eb77', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="afbe6d4a4214">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/23/youtube-releases-new-ai-features-for-creators-within-its-studio-app/" target="_blank" rel="noopener">YouTube releases new AI features for creators within its Studio app</a>
+                    </div>
+                    
+                    <div class="card-summary">YouTube is adding new features to generate ideas and monitor the performance of thumbnails.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/23/youtube-releases-new-ai-features-for-creators-within-its-studio-app/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('afbe6d4a4214', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="a0ffa2d94a21">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">The Verge AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.theverge.com/tech/999140/made-on-youtube-creator-tools-ai-thumbnails-tests" target="_blank" rel="noopener">YouTube is building AI creator tools that do almost everything for them</a>
+                    </div>
+                    
+                    <div class="card-summary">Part of the job of a content creator is to figure out how to get their work in front of the most people.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.theverge.com/tech/999140/made-on-youtube-creator-tools-ai-thumbnails-tests" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('a0ffa2d94a21', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="研究" data-id="8781146ade4f">
+                    <div class="card-top">
+                        <span class="badge badge-研究">研究</span>
+                        <span class="source-label">MIT Technology Review</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.technologyreview.com/2026/09/23/1144966/the-download-india-smart-glasses-ai-trillion-dollar-gamble/" target="_blank" rel="noopener">The Download: India’s smart glasses menace and AI’s trillion-dollar gamble</a>
+                    </div>
+                    
+                    <div class="card-summary">This is today’s edition of The Download, our weekday newsletter that provides a daily dose of what’s going on in the world of technology.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.technologyreview.com/2026/09/23/1144966/the-download-india-smart-glasses-ai-trillion-dollar-gamble/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('8781146ade4f', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="b871dac23694">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/23/ema-raises-77m-as-ai-starts-eating-into-enterprise-software-and-services/" target="_blank" rel="noopener">Ema raises $77M as AI starts eating into enterprise software and services</a>
+                    </div>
+                    
+                    <div class="card-summary">Ema has raised $140 million to date and has more than 50 enterprise customers, including Google and Microsoft.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/23/ema-raises-77m-as-ai-starts-eating-into-enterprise-software-and-services/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('b871dac23694', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="eed86b8ca773">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">The Verge AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.theverge.com/ai-artificial-intelligence/999249/openai-creators-patreon-execs-hire-sam-yam" target="_blank" rel="noopener">OpenAI nabs key Patreon execs ahead of upcoming announcement</a>
+                    </div>
+                    
+                    <div class="card-summary">OpenAI has hired three former Patreon execs to anchor its product strategy for creators.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.theverge.com/ai-artificial-intelligence/999249/openai-creators-patreon-execs-hire-sam-yam" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('eed86b8ca773', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="17001fe0613e">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">Gigazine</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://gigazine.net/news/20260923-air-theremin/" target="_blank" rel="noopener">ウェブカメラに向かって手を振って演奏できる「エア・テルミン」</a>
+                    </div>
+                    
+                    <div class="card-summary">1920年にロシアの発明家が発明した世界初の電子楽器・テルミンは、楽器本体に直接触れることなく、空間中の手の位置によって音を調節するのが特徴的です。そんなテルミンをスマートフォンやPCのカメラを使って再現したのが「Air Theremin(エア・テルミン)」です。 続きを読む...</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://gigazine.net/news/20260923-air-theremin/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('17001fe0613e', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="d0ffa1527421">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">Gigazine</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://gigazine.net/news/20260923-geta-team/" target="_blank" rel="noopener">AI従業員を雇って定型作業をお任せできる「Geta.Team」、各AI従業員に個別にメールアドレス・電話番号を割り当てできてセルフホスト可能、機能限定の無料版もあり</a>
+                    </div>
+                    
+                    <div class="card-summary">メールへの返信や顧客への連絡や定期的な情報収集など、毎日繰り返す作業には多くの時間がかかります。そこでAIエージェントごとに名前や役職だけでなく、メールアドレスや電話番号まで用意し、人間の従業員に近い形で任せることができるサービス「Geta.Team」が公開されています。 続きを読む...</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://gigazine.net/news/20260923-geta-team/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('d0ffa1527421', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ツール" data-id="d9ccd9259ab5">
+                    <div class="card-top">
+                        <span class="badge badge-ツール">ツール</span>
+                        <span class="source-label">Ascii.jp テクノロジー</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://ascii.jp/elem/000/004/436/4436685/?rss" target="_blank" rel="noopener">OrcaRouter、モデルリーダーボードを更新 - OpenAIの「GPT-5.4 Pro」が総合1位</a>
+                    </div>
+                    
+                    <div class="card-summary">OrcaRouter、モデルリーダーボードを更新 - OpenAIの「GPT-5.4 Pro」が総合1位</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://ascii.jp/elem/000/004/436/4436685/?rss" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('d9ccd9259ab5', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="6a2f1bf76c5a">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">Gigazine</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://gigazine.net/news/20260923-gpt-6-sol-luna/" target="_blank" rel="noopener">「GPT-6 Sol」と「GPT-6 Luna」が登場、API料金は前世代の半額でコスト効率が大幅に向上</a>
+                    </div>
+                    
+                    <div class="card-summary">OpenAIが「GPT-6 Sol」と「GPT-6 Luna」を現地時間の2026年9月22日にリリースしました。どちらもGPT-6 Astraと同様の手法でトレーニングされており、前世代モデルと比べてコスト効率が大幅に向上しています。 続きを読む...</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://gigazine.net/news/20260923-gpt-6-sol-luna/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('6a2f1bf76c5a', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ツール" data-id="6c048da213b1">
+                    <div class="card-top">
+                        <span class="badge badge-ツール">ツール</span>
+                        <span class="source-label">Ascii.jp テクノロジー</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://ascii.jp/elem/000/004/436/4436682/?rss" target="_blank" rel="noopener">企業向けスライドAI、生成速度とデザイン品質の改善を予定</a>
+                    </div>
+                    
+                    <div class="card-summary">企業向けスライドAI、生成速度とデザイン品質の改善を予定</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://ascii.jp/elem/000/004/436/4436682/?rss" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('6c048da213b1', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="76cf28d527cb">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">Gigazine</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://gigazine.net/news/20260923-claude-opus-5-5/" target="_blank" rel="noopener">AnthropicがAIモデル「Claude Opus 5.5」を発表、Opus 5よりコスト40％減・30％以上高速化しコーディング性能も向上</a>
+                    </div>
+                    
+                    <div class="card-summary">AI企業のAnthropicが、新しいAIモデル「Claude Opus 5.5」を発表しました。Claude 5.5ファミリーで最初のモデルで、従来のClaude Opus 5から性能や効率、安全性を改善し、一般的な処理ではOpus 5より40％低いコストで利用できるとしています。また、出力速度もOpus 5より30％以上高速化しています。 続きを読む...</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://gigazine.net/news/20260923-claude-opus-5-5/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('76cf28d527cb', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="d089d9884d23">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/22/were-already-fighting-yesterdays-battle-greeces-prime-minister-gets-candid-about-ai/" target="_blank" rel="noopener">‘We’re already fighting yesterday’s battle’: Greece’s prime minister gets candid about AI</a>
+                    </div>
+                    
+                    <div class="card-summary">Most leaders on a trade mission stick to the pitch, but when I interviewed Greek Prime Minister Kyriakos Mitsotakis this week, he also admitted that no government is ready for what AI is about to do.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/22/were-already-fighting-yesterdays-battle-greeces-prime-minister-gets-candid-about-ai/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('d089d9884d23', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ツール" data-id="779c3c7e46ed">
+                    <div class="card-top">
+                        <span class="badge badge-ツール">ツール</span>
+                        <span class="source-label">Impress Watch AI</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.watch.impress.co.jp/docs/news/2142636.html" target="_blank" rel="noopener">OpenAI、「GPT-6 Sol」「Luna」公開　Astra並の性能でコストはGPT-5.6の半額</a>
+                    </div>
+                    
+                    <div class="card-summary">OpenAIは22日(米国時間)、最上位モデル「GPT‑6 Astra」と同じGPT-6シリーズで、高い知能とコスト効率を両立した新モデル「GPT‑6 Sol」、「GPT‑6 Luna」を提供開始した。GPT-6 Astraを最上位モデルとし、Sol、Lunaの3つのモデルを用途やコストに応じて選択可能となる。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.watch.impress.co.jp/docs/news/2142636.html" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('779c3c7e46ed', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="412a417c5833">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/news/article/2609/23/2000001676/" target="_blank" rel="noopener">トランプ大統領、国連演説で「AI」を「Super Intelligence」に改称すると表明</a>
+                    </div>
+                    
+                    <div class="card-summary">トランプ米大統領は国連総会の一般討論演説で、AIの呼称を「Super Intelligence（SI）」に変更すると表明した。米国の全公文書で採用し、他国にも同調を促す。国際的なAI管理の枠組みを拒否し、地球温暖化論争になぞらえて脅威論を一蹴した上で、成長を支援して開発競争をリードする姿勢を強調した。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/news/article/2609/23/2000001676/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('412a417c5833', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="9b3e8c59f686">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">The Verge AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.theverge.com/ai-artificial-intelligence/999167/openai-elite-mathematicians-panel" target="_blank" rel="noopener">OpenAI wants to consult elite mathematicians about how to not fumble again</a>
+                    </div>
+                    
+                    <div class="card-summary">After turning a string of spectacular mathematical results into a reputational crisis, OpenAI is consulting human mathematicians to help it figure out a less disastrous path forward.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.theverge.com/ai-artificial-intelligence/999167/openai-elite-mathematicians-panel" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('9b3e8c59f686', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="8d2dfb40da2c">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/news/article/2609/23/2000001674/" target="_blank" rel="noopener">OpenAI、「GPT-6 Sol」と「GPT-6 Luna」公開　API料金は前世代の半額に</a>
+                    </div>
+                    
+                    <div class="card-summary">OpenAIは新モデル「GPT-6 Sol」と「GPT-6 Luna」を公開した。最上位のAstraと同様の手法で訓練し、前世代からAPI料金を半額に引き下げた。ChatGPTやCodexで順次提供する。アライメント改善が進む一方、思考過程で評価を察知する兆候が増加するなど監視上の課題も残る。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/news/article/2609/23/2000001674/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('8d2dfb40da2c', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ツール" data-id="f03a5c89e09f">
+                    <div class="card-top">
+                        <span class="badge badge-ツール">ツール</span>
+                        <span class="source-label">Impress Watch AI</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.watch.impress.co.jp/docs/topic/2142055.html" target="_blank" rel="noopener">アプリ「マウスカーソルげんそくん」をMicrosoft Storeで公開してみた</a>
+                    </div>
+                    
+                    <div class="card-summary">みなさん、AIコーディングを駆使してアプリやサービスを開発していますか? きっと自分用ツールをガンガン作って日々の作業を楽にしたり、生活を便利にしていることでしょう。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.watch.impress.co.jp/docs/topic/2142055.html" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('f03a5c89e09f', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="a056321ac4e8">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/22/techcrunch-founder-summits-agenda-revealed-unlock-fundraising-hiring-and-ai-insights-in-boston-on-november-4/" target="_blank" rel="noopener">TechCrunch Founder Summit’s agenda revealed: Unlock fundraising, hiring, and AI insights in Boston on November 4</a>
+                    </div>
+                    
+                    <div class="card-summary">Founders shouldn&#39;t have to learn the hardest lessons the hardest way. TechCrunch Founder Summit is designed to make the challenges of starting a company easier and the highs that much greater.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/22/techcrunch-founder-summits-agenda-revealed-unlock-fundraising-hiring-and-ai-insights-in-boston-on-november-4/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('a056321ac4e8', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="deaaa57e14b2">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/business/articles/2609/23/news004.html" target="_blank" rel="noopener">今押さえたい「半導体」の基礎知識　極小チップが“AI時代の戦略物資”になった、納得の理由</a>
+                    </div>
+                    
+                    <div class="card-summary">ニュースでよく聞く「半導体」。「GPUのことね」「AI時代に重要なんでしょ」という認識はあっても、その本質を理解できていますか？ 半導体が重要視される理由を基礎から解説します。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/business/articles/2609/23/news004.html" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('deaaa57e14b2', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="72d9ec9d4d07">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://kn.itmedia.co.jp/kn/article/2609/23/2000001663/" target="_blank" rel="noopener">AWS、SalesforceがAI連携を強化　データ分断をどう解消するか</a>
+                    </div>
+                    
+                    <div class="card-summary">AIエージェントの導入が進む一方、企業には「必要なデータが別のシステムにある」というボトルネックがある。AWSとSalesforceは、データを移動させず、普段使うツールの中でAIを活用できる環境づくりを進める。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://kn.itmedia.co.jp/kn/article/2609/23/2000001663/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('72d9ec9d4d07', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="fc42d0433bfe">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://kn.itmedia.co.jp/kn/article/2609/23/2000001607/" target="_blank" rel="noopener">AIを導入した企業ほど困る「データ基盤問題」　パーソルが3サービスで支援へ</a>
+                    </div>
+                    
+                    <div class="card-summary">生成AIやAIエージェントの導入が進む一方、データの整理不足や権限管理、コスト、老朽化した基盤が活用のボトルネックとなる。パーソルビジネスプロセスデザインは、AIを継続利用するためのデータ基盤を支援する3サービスを開始した。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://kn.itmedia.co.jp/kn/article/2609/23/2000001607/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('fc42d0433bfe', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="f2901c335094">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/news/article/2609/23/2000001673/" target="_blank" rel="noopener">Anthropic、「Claude Opus 5.5」公開　Fable 5.1並みの性能で利用コスト4割減</a>
+                    </div>
+                    
+                    <div class="card-summary">Anthropicは「Claude Opus 5.5」を発表した。多くの作業で「Fable 5.1」並みの性能を持ち、利用コストは「Opus 5」より約40％低い。Pro以上の有料プランとAPIで即日提供を始めた。アモデイCEOの「ペース調整」エッセイ後初のモデルで、METRなど外部機関による事前評価を経て、Fable 5.1と同等クラスのセーフガードを適用した。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/news/article/2609/23/2000001673/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('f2901c335094', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="9a309251ecb5">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/22/snorkel-ai-triples-valuation-to-3-5b-as-demand-for-ai-training-data-booms/" target="_blank" rel="noopener">Snorkel AI triples valuation to $3.5B as demand for AI training data booms</a>
+                    </div>
+                    
+                    <div class="card-summary">The seven-year-old startup has raised a $350 million Series E to fuel its data-as-a-service approach.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/22/snorkel-ai-triples-valuation-to-3-5b-as-demand-for-ai-training-data-booms/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('9a309251ecb5', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="1d09a4ee2f8e">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">The Verge AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.theverge.com/ai-artificial-intelligence/999094/rabbit-ai-agent-os3" target="_blank" rel="noopener">Rabbit’s new AI agent doesn’t need an R1 to run</a>
+                    </div>
+                    
+                    <div class="card-summary">Rabbit, the company behind the underwhelming R1 device, is rolling out a standalone AI agent that you don&#39;t need its hardware to use, as reported earlier by Wired.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.theverge.com/ai-artificial-intelligence/999094/rabbit-ai-agent-os3" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('1d09a4ee2f8e', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="22667092ecc8">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/22/qualcomm-launches-two-new-smartphone-chips-with-emphasis-on-ai/" target="_blank" rel="noopener">Qualcomm launches two new smartphone chips with emphasis on AI</a>
+                    </div>
+                    
+                    <div class="card-summary">Qualcomm said that its new top chip can run 30B mixture-of-expert model locally.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/22/qualcomm-launches-two-new-smartphone-chips-with-emphasis-on-ai/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('22667092ecc8', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ツール" data-id="1cb274a29d8c">
+                    <div class="card-top">
+                        <span class="badge badge-ツール">ツール</span>
+                        <span class="source-label">Ars Technica AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://arstechnica.com/security/2026/09/microsoft-disrupts-ai-assisted-platform-that-compromised-12000/" target="_blank" rel="noopener">Microsoft disrupts AI-assisted platform that compromised 12,000 accounts</a>
+                    </div>
+                    
+                    <div class="card-summary">EvilTokens provided an end-to-end platform that makes mass compromises faster and easier.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://arstechnica.com/security/2026/09/microsoft-disrupts-ai-assisted-platform-that-compromised-12000/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('1cb274a29d8c', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="85e5c7928335">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/22/meta-admits-muses-likeness-to-openclaw-isnt-a-coincidence/" target="_blank" rel="noopener">Meta admits Muse’s likeness to OpenClaw isn’t a coincidence</a>
+                    </div>
+                    
+                    <div class="card-summary">Meta says Muse was built from scratch, but acknowledges the AI assistant was &#34;heavily inspired&#34; by OpenClaw — down to some of its workspace filenames and content.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/22/meta-admits-muses-likeness-to-openclaw-isnt-a-coincidence/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('85e5c7928335', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="6f6c6aab6248">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/22/openai-launches-gpt-6-sol-and-luna/" target="_blank" rel="noopener">OpenAI launches GPT-6 Sol and Luna, boasting lower cost and fewer mistakes</a>
+                    </div>
+                    
+                    <div class="card-summary">OpenAI is launching two new models, which it says are cut from the same cloth as Astra.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/22/openai-launches-gpt-6-sol-and-luna/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('6f6c6aab6248', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ツール" data-id="255f5b1a6c91">
+                    <div class="card-top">
+                        <span class="badge badge-ツール">ツール</span>
+                        <span class="source-label">Impress Watch AI</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.watch.impress.co.jp/docs/news/2142619.html" target="_blank" rel="noopener">Claude Opus 5.5登場　Fable 5.1並みの性能をOpus 5より40%安価に</a>
+                    </div>
+                    
+                    <div class="card-summary">Anthropicは22日(米国時間)、最新のAIモデル「Claude Opus 5.5」を提供開始した。ほとんどの作業において最上位モデル「Fable 5.1」と同等の性能を発揮し、コストは現行の「Opus 5」よりも40%安くなるという。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.watch.impress.co.jp/docs/news/2142619.html" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('255f5b1a6c91', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="f249b34f2aca">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">The Verge AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.theverge.com/ai-artificial-intelligence/998868/anthropic-claude-opus-5-5-cybersecurity" target="_blank" rel="noopener">Anthropic launches Claude Opus 5.5 with stricter safeguards for cybersecurity</a>
+                    </div>
+                    
+                    <div class="card-summary">Anthropic says its new Claude Opus 5.5 model comes with stronger safeguards in the wake of recent rogue AI hacking incidents.In an announcement on Tuesday, Anthropic says Opus 5.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.theverge.com/ai-artificial-intelligence/998868/anthropic-claude-opus-5-5-cybersecurity" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('f249b34f2aca', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="fc2fb3bd0bf8">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">The Verge AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.theverge.com/ai-artificial-intelligence/998816/donald-trump-ai-super-intelligence" target="_blank" rel="noopener">Trump says the US is officially renaming AI to ‘super intelligence’</a>
+                    </div>
+                    
+                    <div class="card-summary">In a speech Tuesday morning at the UN General Assembly, Donald Trump railed against Iran, &#34;globalists,&#34; climate change, and transgender people while also claiming that the US is now &#34;officially&#34; renam…</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.theverge.com/ai-artificial-intelligence/998816/donald-trump-ai-super-intelligence" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('fc2fb3bd0bf8', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="969bcefc08d5">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/22/astroforge-is-putting-ai-in-command-of-its-next-spacecraft/" target="_blank" rel="noopener">AstroForge is putting AI in command of its next spacecraft</a>
+                    </div>
+                    
+                    <div class="card-summary">Autonomy-1 will have a small, transformer-based AI model taking charge of a space probe.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/22/astroforge-is-putting-ai-in-command-of-its-next-spacecraft/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('969bcefc08d5', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <div class="date-section">
+                <div class="date-header">📅 9/22（18件）</div>
+                
+                <div class="card" data-category="研究" data-id="6c19f62cd86d">
+                    <div class="card-top">
+                        <span class="badge badge-研究">研究</span>
+                        <span class="source-label">MIT Technology Review</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.technologyreview.com/2026/09/22/1144890/roundtables-the-deadly-failures-of-the-virtual-border-wall/" target="_blank" rel="noopener">Roundtables: The Deadly Failures of The Virtual Border Wall</a>
+                    </div>
+                    
+                    <div class="card-summary">The US has spent billions building a “virtual wall” of surveillance towers along its southern border over the past 25 years, promising they will help detect and apprehend border crossers and save live…</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.technologyreview.com/2026/09/22/1144890/roundtables-the-deadly-failures-of-the-virtual-border-wall/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('6c19f62cd86d', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="e3d6b9bdda7c">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">Gigazine</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://gigazine.net/news/20260922-openai-storage-habitat/" target="_blank" rel="noopener">OpenAIが10億人以上・40ペタバイト超えのユーザーデータを扱う自社製ストレージシステム「Habitat」について解説</a>
+                    </div>
+                    
+                    <div class="card-summary">OpenAIはChatGPTやCodexといったサービスを展開しており、ユーザー数は2026年7月末時点で10億人に達しています。OpenAIは10億人を超えるユーザーのデータを自社製オンラインストレージシステム「Habitat」で管理しているとのこと。このHabitatの詳細がOpenAIの公式ブログで解説されています。 続きを読む...</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://gigazine.net/news/20260922-openai-storage-habitat/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('e3d6b9bdda7c', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="研究" data-id="5d0fe6aea4e3">
+                    <div class="card-top">
+                        <span class="badge badge-研究">研究</span>
+                        <span class="source-label">MIT Technology Review</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.technologyreview.com/2026/09/22/1144910/the-download-dont-believe-ai-hype/" target="_blank" rel="noopener">The Download: why AI’s latest breakthroughs and fears may be more hype than reality</a>
+                    </div>
+                    
+                    <div class="card-summary">This is today’s edition of The Download, our weekday newsletter that provides a daily dose of what’s going on in the world of technology.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.technologyreview.com/2026/09/22/1144910/the-download-dont-believe-ai-hype/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('5d0fe6aea4e3', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="bc48ce0ff676">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">The Verge AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.theverge.com/tech/998679/meta-muse-patch-zero-day-exploit-ai-agent" target="_blank" rel="noopener">Meta patches Muse exploit that let attackers control the AI agent</a>
+                    </div>
+                    
+                    <div class="card-summary">Meta has issued a patch for its Muse macOS app following the discovery of a zero-day vulnerability that could allow someone to take control of the AI agent.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.theverge.com/tech/998679/meta-muse-patch-zero-day-exploit-ai-agent" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('bc48ce0ff676', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="研究" data-id="880bbf38cc09">
+                    <div class="card-top">
+                        <span class="badge badge-研究">研究</span>
+                        <span class="source-label">MIT Technology Review</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.technologyreview.com/2026/09/22/1144867/dont-be-fooled-summer-ai-hype/" target="_blank" rel="noopener">Don’t be fooled by this summer of AI hype</a>
+                    </div>
+                    
+                    <div class="card-summary">It’s been a busy few months for AI hype.At the end of April, Anthropic claimed that its model Claude Mythos is better at finding software vulnerabilities than most security experts.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.technologyreview.com/2026/09/22/1144867/dont-be-fooled-summer-ai-hype/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('880bbf38cc09', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="47a8cc86b7ce">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">Gigazine</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://gigazine.net/news/20260922-onecli/" target="_blank" rel="noopener">無料でひとりでは無く複数人のチームで使うことができるAIエージェント「OneCLI」、オープンソースでセルフホスト可能</a>
+                    </div>
+                    
+                    <div class="card-summary">AIエージェントを社員ごとに導入すると、それぞれの実行環境やAPIキー・利用できるサービス・権限などを個別に管理する必要があります。各メンバーに専用のAIエージェントを割り当てながら、認証情報やアクセスルールをチーム単位でまとめて管理できるオープンソースの「OneCLI」が公開されています。 続きを読む...</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://gigazine.net/news/20260922-onecli/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('47a8cc86b7ce', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="57db2f8b1061">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/news/article/2609/22/2000001671/" target="_blank" rel="noopener">OpenAI、数学者の独立諮問グループと連携　内部モデルは「100件超の未解決問題を解決」</a>
+                    </div>
+                    
+                    <div class="card-summary">OpenAIは、数学者が設立した独立組織「AGMAI」と連携し、AIによる数学的成果の評価や公表方法について助言を受けると発表した。社内モデルによる100件以上の未解決問題解決を受けた動きで、急速な成果発表や帰属問題を巡る数学界からの批判に対応する。組織は独立して運営され、他社への助言も行う方針だ。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/news/article/2609/22/2000001671/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('57db2f8b1061', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="2c6a83154952">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/news/article/2609/22/2000001670/" target="_blank" rel="noopener">OpenAI、フロンティアAIの国際標準づくりを米国主導で進めるよう提言　「RSIはまだ起きていない」</a>
+                    </div>
+                    
+                    <div class="card-summary">た。各国のAI安全性研究所の連携などを提案し、制御不能な自律的進化を防ぐ枠組みを求める。アルトマンCEOは国連安保理の公開会合でも発言する予定だ。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/news/article/2609/22/2000001670/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('2c6a83154952', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ツール" data-id="1628782d767b">
+                    <div class="card-top">
+                        <span class="badge badge-ツール">ツール</span>
+                        <span class="source-label">Impress Watch AI</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.watch.impress.co.jp/docs/news/2142588.html" target="_blank" rel="noopener">「Grok 4.7」登場、長時間タスクも安定処理　価格はSolの半分以下</a>
+                    </div>
+                    
+                    <div class="card-summary">SpaceXAIは21日(米国時間)、最新のAIモデルとなる「Grok 4.7」を公開した。コーディングやナレッジワーク向けで、同社における最高モデルとなり、同等のモデルと比較し、「処理速度は2倍、価格は半額」とアピールしている。CursorとGrok Buildで利用可能となるほか、Grok APIや各社のコーディングハーネス、モデルルーター、クラウドプラットフォームでも展開する。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.watch.impress.co.jp/docs/news/2142588.html" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('1628782d767b', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="e087927252d0">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/news/article/2609/22/2000001669/" target="_blank" rel="noopener">Amazon、MetaのAIエージェント「Muse」による代理購入をブロック　Shopifyは全店舗で対応へ</a>
+                    </div>
+                    
+                    <div class="card-summary">AmazonがMetaのAIエージェント「Muse」による自社サイトでの代理購入をブロックしたと報じられた。無断アクセスやセキュリティ上のリスクを理由としている。一方、MetaはShopify全ストアへの対応を発表するなど連携拡大を進める。自社サイトでのAIエージェント排除を強めるAmazonとの対立が鮮明になっている。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/news/article/2609/22/2000001669/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('e087927252d0', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="12f1de1f0451">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/news/article/2609/22/2000001668/" target="_blank" rel="noopener">SpaceXAI、「Grok 4.7」発表　コーディングと知識労働向けで同社最高性能、価格は据え置き</a>
+                    </div>
+                    
+                    <div class="card-summary">SpaceXAIはAIモデル「Grok 4.7」を発表した。前モデルと同価格・同速度を維持しつつ大規模なベースモデルを採用し、コーディングや長時間の業務タスク性能、安全性を強化した。[Cursor](https://www.itmedia.co.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/news/article/2609/22/2000001668/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('12f1de1f0451', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="16d9757ebaf1">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">ITmedia NEWS</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/news/article/2609/22/2000001649/" target="_blank" rel="noopener">今度は“ディスプレイなし”のAIグラス、「Rokid Ai Glasses Style」を試す</a>
+                    </div>
+                    
+                    <div class="card-summary">Rokidから早くもディスプレイなし・スピーカーあり・カメラありのモデル「Rokid Ai Glasses Style」が追加された。今回はこちらを試してみたい。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/news/article/2609/22/2000001649/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('16d9757ebaf1', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="5fc9b3fea302">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://atmarkit.itmedia.co.jp/ait/articles/2609/22/news009.html" target="_blank" rel="noopener">キユーピー、AIで工場シミュレーションモデルの開発工数を8割削減　3つの壁をどう乗り越えた？</a>
+                    </div>
+                    
+                    <div class="card-summary">製造業では工場シミュレーションが重要な役割を果たす。しかしシミュレーションモデルの構築には専用ソフトウェアと専門言語の高度な知識が要り、属人化しやすい。キユーピーでは、生成AIによる高度化、効率化を目指していたが、それには3つの課題があった。どう対応したのか。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://atmarkit.itmedia.co.jp/ait/articles/2609/22/news009.html" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('5fc9b3fea302', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="c78f3203a4ff">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/enterprise/articles/2609/22/news018.html" target="_blank" rel="noopener">脱メインフレーム、7割超が失敗　背景に「生成AIへの過信」　2026年度上半期システム刷新記事ランキング</a>
+                    </div>
+                    
+                    <div class="card-summary">生成AIがあればレガシー刷新は楽になる――。この期待に冷や水を浴びせる予測が発表されました。2026年度上半期（4～9月）のシステム刷新関連記事トップ10を紹介し、「システム刷新における生成AIの現在地」と「AI時代に人に残る役割」に迫ります。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/enterprise/articles/2609/22/news018.html" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('c78f3203a4ff', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="2631d2e7608a">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">ITmedia NEWS</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/news/article/2609/22/2000001667/" target="_blank" rel="noopener">Google、「Googlebook」の予約受付開始　899ドル（約14万円）から</a>
+                    </div>
+                    
+                    <div class="card-summary">Googleは5月に発表した新型ノートPC「Googlebook」の予約受付を開始した。899ドル（約14万円）からで日本は発売地域外。Androidを基盤にデスクトップ機能を組み合わせ、AIやスマホ連携を強化したフラグシップ機と位置付ける。自社製はなくAcerやASUSなど5社から展開し、最長10年のOSアップデートを提供する。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/news/article/2609/22/2000001667/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('2631d2e7608a', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ツール" data-id="05a33b640753">
+                    <div class="card-top">
+                        <span class="badge badge-ツール">ツール</span>
+                        <span class="source-label">Ars Technica AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://arstechnica.com/security/2026/09/muse-metas-extraordinarily-privileged-ai-assistant-has-a-serious-0-day/" target="_blank" rel="noopener">Muse, Meta&#39;s extraordinarily privileged AI assistant, has a serious 0-day</a>
+                    </div>
+                    
+                    <div class="card-summary">A simple ClickFix attack is only one way to completely hijack the new agent.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://arstechnica.com/security/2026/09/muse-metas-extraordinarily-privileged-ai-assistant-has-a-serious-0-day/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('05a33b640753', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="7fe6eeb542d7">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://kn.itmedia.co.jp/kn/article/2609/22/2000001658/" target="_blank" rel="noopener">Teams会議をAIエージェントの「教材」に　埋もれた経験則を資産に変える新たな手法とは</a>
+                    </div>
+                    
+                    <div class="card-summary">AIエージェントの活用が広がる中、企業固有の「仕事の進め方」をどうAIに教えるかが課題になっている。Teams会議に埋もれた判断や経験則を、AIが扱える業務知識へどう変換するか。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://kn.itmedia.co.jp/kn/article/2609/22/2000001658/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('7fe6eeb542d7', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="3b728667d920">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">The Verge AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.theverge.com/ai-artificial-intelligence/998453/california-ai-data-center-bills" target="_blank" rel="noopener">California tightens rules on AI data center energy and water use</a>
+                    </div>
+                    
+                    <div class="card-summary">California Gov.Gavin Newsom has signed seven bills designed to prevent AI data centers from passing utility costs onto residents, as reported earlier by the Los Angeles Times.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.theverge.com/ai-artificial-intelligence/998453/california-ai-data-center-bills" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('3b728667d920', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <div class="date-section">
+                <div class="date-header">📅 9/21（7件）</div>
+                
+                <div class="card" data-category="研究" data-id="5935656967dc">
+                    <div class="card-top">
+                        <span class="badge badge-研究">研究</span>
+                        <span class="source-label">MIT Technology Review</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.technologyreview.com/2026/09/21/1144834/the-download-investigating-deaths-at-the-us-borders-virtual-wall/" target="_blank" rel="noopener">The Download: investigating deaths at the US border’s “virtual wall”</a>
+                    </div>
+                    
+                    <div class="card-summary">This is today’s edition of The Download, our weekday newsletter that provides a daily dose of what’s going on in the world of technology.The US spent billions on border surveillance.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.technologyreview.com/2026/09/21/1144834/the-download-investigating-deaths-at-the-us-borders-virtual-wall/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('5935656967dc', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="研究" data-id="999310da2970">
+                    <div class="card-top">
+                        <span class="badge badge-研究">研究</span>
+                        <span class="source-label">MIT Technology Review</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.technologyreview.com/2026/09/21/1144164/border-towers-surveillance-policy-recommendations/" target="_blank" rel="noopener">4 ways to address the failures we found along the US border’s “virtual wall”</a>
+                    </div>
+                    
+                    <div class="card-summary">MIT Technology Review today published our investigation into how many people have died near the “virtual wall” of surveillance towers that the US government has installed along the US-Mexico border.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.technologyreview.com/2026/09/21/1144164/border-towers-surveillance-policy-recommendations/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('999310da2970', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="研究" data-id="e3a07c6d1bac">
+                    <div class="card-top">
+                        <span class="badge badge-研究">研究</span>
+                        <span class="source-label">MIT Technology Review</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.technologyreview.com/2026/09/21/1144166/border-towers-surveillance-investigation/" target="_blank" rel="noopener">The US spent billions on border surveillance. Why can’t it catch people before they die?</a>
+                    </div>
+                    
+                    <div class="card-summary">When José Morales Bernal crossed the border into the United States on April 8, 2024, the day before his 32nd birthday, it should have triggered a chain of technological alerts and human responses.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.technologyreview.com/2026/09/21/1144166/border-towers-surveillance-investigation/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('e3a07c6d1bac', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="研究" data-id="8802ee86d01e">
+                    <div class="card-top">
+                        <span class="badge badge-研究">研究</span>
+                        <span class="source-label">MIT Technology Review</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.technologyreview.com/2026/09/21/1144170/border-towers-surveillance-feature/" target="_blank" rel="noopener">She died at the San Diego border. A surveillance camera was in plain sight</a>
+                    </div>
+                    
+                    <div class="card-summary">She had only walked for a couple of hours, and already she was lost.It was early afternoon on Sept.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.technologyreview.com/2026/09/21/1144170/border-towers-surveillance-feature/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('8802ee86d01e', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ツール" data-id="360a25a62f63">
+                    <div class="card-top">
+                        <span class="badge badge-ツール">ツール</span>
+                        <span class="source-label">Impress Watch AI</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.watch.impress.co.jp/docs/news/2142553.html" target="_blank" rel="noopener">BOOX、高速化した10.3型カラー電子ペーパータブ「NoteAir6C」</a>
+                    </div>
+                    
+                    <div class="card-summary">SKTは、10.3インチカラー電子ペーパーを採用したBOOXの新電子ペーパーデバイス「BOOX NoteAir6C」を9月21日から発売する。価格は96,800円。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.watch.impress.co.jp/docs/news/2142553.html" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('360a25a62f63', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="活用事例" data-id="15d6511f1860">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">ITmedia AI+</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/news/article/2609/21/2000001666/" target="_blank" rel="noopener">トランプ大統領、「AI Force」創設を表明　「AI脅威論はでっちあげだ」</a>
+                    </div>
+                    
+                    <div class="card-summary">トランプ大統領はSNSへの投稿で、AIを担当する新組織「AI Force」の創設と責任者“AI皇帝”の指名を表明した。AI脅威論を否定して業界の成長支援を掲げ、AIの新たな呼称案の投票も呼び掛けた。Anthropicなどの経営陣から開発のペース調整や安全性を求める声が相次ぐ中、規制に否定的な姿勢を鮮明にしている。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/news/article/2609/21/2000001666/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('15d6511f1860', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="49124c6671d0">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">ITmedia NEWS</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.itmedia.co.jp/news/article/2609/21/2000001665/" target="_blank" rel="noopener">Googleの「Gemini」も能力テスト中に実在企業3社に侵入──WSJ報道</a>
+                    </div>
+                    
+                    <div class="card-summary">GoogleのAI「Gemini」が、サイバーセキュリティの評価テスト中に外部ネットワークへ接続し、実在する3社のシステムへ自律的に侵入していたことが判明した。架空なはずの社名が実存企業と一致したことやテスト環境の設定不備が原因。Googleは、Geminiが実在企業と認識した時点で侵入を中止しており、実害やミスアライメントはないと説明している。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.itmedia.co.jp/news/article/2609/21/2000001665/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('49124c6671d0', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <div class="date-section">
+                <div class="date-header">📅 9/20（1件）</div>
+                
+                <div class="card" data-category="ツール" data-id="c6d68741f5f2">
+                    <div class="card-top">
+                        <span class="badge badge-ツール">ツール</span>
+                        <span class="source-label">Ars Technica AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://arstechnica.com/security/2026/09/an-undercover-google-analyst-infiltrated-a-notorious-supply-chain-hacking-gang/" target="_blank" rel="noopener">An undercover Google analyst infiltrated a notorious supply-chain hacking gang</a>
+                    </div>
+                    
+                    <div class="card-summary">Google’s threat intelligence group said it had a mole inside TeamPCP&#39;s inner circle.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://arstechnica.com/security/2026/09/an-undercover-google-analyst-infiltrated-a-notorious-supply-chain-hacking-gang/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('c6d68741f5f2', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <div class="date-section">
+                <div class="date-header">📅 9/19（1件）</div>
+                
+                <div class="card" data-category="活用事例" data-id="5c41ec5dc5b4">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">AINOW</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://ainow.ai/2026/09/19/278372/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=ai%25e3%2582%25a8%25e3%2583%25bc%25e3%2582%25b8%25e3%2582%25a7%25e3%2583%25b3%25e3%2583%2588%25e3%2581%258c%25e9%259b%25a3%25e3%2581%2597%25e3%2581%2584%25e7%2590%2586%25e7%2594%25b1%25e3%2581%25a8%25e9%259b%25a3%25e6%2598%2593%25e5%25ba%25a6%25e3%2582%2592%25e4%25b8%258b%25e3%2581%2592%25e3%2582%258b%25e5%25b0%258e%25e5%2585%25a5" target="_blank" rel="noopener">AIエージェントが難しい理由と難易度を下げる導入ステップを解説</a>
+                    </div>
+                    
+                    <div class="card-summary">AIエージェントの検証を始めたものの、半年経っても本番導入に進めず、難しいと感じている方は少なくないでしょう。 AIエージェントが難しいのは技術が未熟だからではなく、難しさが導入・開発・運用の3段階に分かれていて、自社が... The post AIエージェントが難しい理由と難易度を下げる導入ステップを解説 first appeared on AI専門ニュースメディア AINOW .</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://ainow.ai/2026/09/19/278372/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=ai%25e3%2582%25a8%25e3%2583%25bc%25e3%2582%25b8%25e3%2582%25a7%25e3%2583%25b3%25e3%2583%2588%25e3%2581%258c%25e9%259b%25a3%25e3%2581%2597%25e3%2581%2584%25e7%2590%2586%25e7%2594%25b1%25e3%2581%25a8%25e9%259b%25a3%25e6%2598%2593%25e5%25ba%25a6%25e3%2582%2592%25e4%25b8%258b%25e3%2581%2592%25e3%2582%258b%25e5%25b0%258e%25e5%2585%25a5" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('5c41ec5dc5b4', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <div class="date-section">
+                <div class="date-header">📅 9/18（2件）</div>
+                
+                <div class="card" data-category="活用事例" data-id="c4075fcde6a2">
+                    <div class="card-top">
+                        <span class="badge badge-活用事例">活用事例</span>
+                        <span class="source-label">AINOW</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://ainow.ai/2026/09/18/278369/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=ai%25e3%2582%25a8%25e3%2583%25bc%25e3%2582%25b8%25e3%2582%25a7%25e3%2583%25b3%25e3%2583%2588%25e3%2581%25a7%25e8%2587%25aa%25e5%258b%2595%25e5%258c%2596%25e3%2581%25a7%25e3%2581%258d%25e3%2582%258b%25e4%25ba%258b%25e5%258b%2599%25e4%25bd%259c%25e6%25a5%25ad10%25e9%2581%25b8%25ef%25bc%2581%25e5%2588%25a4%25e6%2596%25ad" target="_blank" rel="noopener">AIエージェントで自動化できる事務作業10選！判断基準と導入手順を解説</a>
+                    </div>
+                    
+                    <div class="card-summary">月末になると請求書の仕訳入力や勤怠の不備チェックに部署総出で追われ、人を増やす以外の解決策が見つからないという状況に陥っていないでしょうか。 AIエージェントは、目的を与えると手順の組み立てから実行までを自ら進めるAIで... The post AIエージェントで自動化できる事務作業10選！判断基準と導入手順を解説 first appeared on AI専門ニュースメディア AINOW .</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://ainow.ai/2026/09/18/278369/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=ai%25e3%2582%25a8%25e3%2583%25bc%25e3%2582%25b8%25e3%2582%25a7%25e3%2583%25b3%25e3%2583%2588%25e3%2581%25a7%25e8%2587%25aa%25e5%258b%2595%25e5%258c%2596%25e3%2581%25a7%25e3%2581%258d%25e3%2582%258b%25e4%25ba%258b%25e5%258b%2599%25e4%25bd%259c%25e6%25a5%25ad10%25e9%2581%25b8%25ef%25bc%2581%25e5%2588%25a4%25e6%2596%25ad" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('c4075fcde6a2', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ツール" data-id="8ea3506ff4a5">
+                    <div class="card-top">
+                        <span class="badge badge-ツール">ツール</span>
+                        <span class="source-label">Ars Technica AI</span>
+                        
+                        <span class="lang-badge">EN</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://arstechnica.com/security/2026/09/ai-text-watermarking-can-make-models-more-vulnerable-to-adversarial-prompts/" target="_blank" rel="noopener">LLMs respond differently to harmful prompts when AI watermarking is used</a>
+                    </div>
+                    
+                    <div class="card-summary">SynthID can cause models to follow harmful instructions they would otherwise refuse.</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://arstechnica.com/security/2026/09/ai-text-watermarking-can-make-models-more-vulnerable-to-adversarial-prompts/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('8ea3506ff4a5', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+            </div>
+            
+        
+    </main>
+
+    <!-- フッター -->
+    <div class="footer">
+        GitHub Actions で毎朝自動更新<br>
+        Powered by RSS feeds
+    </div>
+
+    <script>
+        // ===== 既読管理（localStorage） =====
+        const STORAGE_KEY = 'ai-news-read-articles';
+
+        function getReadArticles() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            } catch {
+                return {};
+            }
+        }
+
+        function saveReadArticles(data) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch {
+                // localStorage が使えない環境では無視
+            }
+        }
+
+        function toggleRead(articleId, button) {
+            const readArticles = getReadArticles();
+            const card = button.closest('.card');
+
+            if (readArticles[articleId]) {
+                delete readArticles[articleId];
+                card.classList.remove('read');
+                button.classList.remove('checked');
+            } else {
+                readArticles[articleId] = Date.now();
+                card.classList.add('read');
+                button.classList.add('checked');
+            }
+
+            saveReadArticles(readArticles);
+        }
+
+        // ページ読み込み時に既読状態を復元
+        function restoreReadState() {
+            const readArticles = getReadArticles();
+            document.querySelectorAll('.card').forEach(card => {
+                const id = card.dataset.id;
+                if (readArticles[id]) {
+                    card.classList.add('read');
+                    const btn = card.querySelector('.read-check');
+                    if (btn) btn.classList.add('checked');
+                }
+            });
+
+            // 7日以上前の既読データを掃除
+            const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            let cleaned = false;
+            for (const [id, timestamp] of Object.entries(readArticles)) {
+                if (timestamp < weekAgo) {
+                    delete readArticles[id];
+                    cleaned = true;
+                }
+            }
+            if (cleaned) saveReadArticles(readArticles);
+        }
+
+        // ===== カテゴリフィルター =====
+        function filterCategory(category, chip) {
+            // チップのアクティブ状態を更新
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+
+            // カードの表示/非表示
+            document.querySelectorAll('.card').forEach(card => {
+                if (category === 'all' || card.dataset.category === category) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // 空の日付セクションを非表示
+            document.querySelectorAll('.date-section').forEach(section => {
+                const visibleCards = section.querySelectorAll('.card:not([style*="display: none"])');
+                section.style.display = visibleCards.length > 0 ? '' : 'none';
+            });
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', restoreReadState);
+    </script>
+</body>
+</html>
