@@ -22,9 +22,9 @@ import yaml
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
 
-# deep-translator の安全なインポート
+# deep-translator のインポート
 try:
-    from deep_translator import GoogleTranslator
+    from deep_translator import GoogleTranslator, MyMemoryTranslator
     HAS_TRANSLATOR = True
 except ImportError:
     HAS_TRANSLATOR = False
@@ -36,7 +36,7 @@ MAX_SUMMARY_LENGTH = 200   # 要約の最大文字数
 ARCHIVE_DAYS = 7            # アーカイブ保持日数
 MAX_ARTICLES_PER_SOURCE = 15  # ソースあたりの最大取得記事数
 FETCH_INTERVAL = 1.0        # ソース間の待機時間（秒）
-TRANSLATE_INTERVAL = 0.4    # 翻訳API間の待機時間（秒）
+TRANSLATE_INTERVAL = 0.5    # 翻訳API間の待機時間（秒）
 
 
 # =====================================================================
@@ -48,11 +48,9 @@ def clean_html(html_text: str) -> str:
     if not html_text:
         return ""
     soup = BeautifulSoup(html_text, "html.parser")
-    # 不要な要素を削除
     for tag in soup.find_all(["script", "style", "iframe", "img"]):
         tag.decompose()
     text = soup.get_text(separator=" ", strip=True)
-    # 連続する空白を1つに
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
@@ -62,7 +60,6 @@ def truncate_at_sentence(text: str, max_length: int = MAX_SUMMARY_LENGTH) -> str
     if len(text) <= max_length:
         return text
 
-    # 日本語・英語の文末記号で分割
     sentence_endings = re.compile(r"(?<=[。．！？\.\!\?])\s*")
     sentences = sentence_endings.split(text)
 
@@ -76,7 +73,6 @@ def truncate_at_sentence(text: str, max_length: int = MAX_SUMMARY_LENGTH) -> str
             break
 
     if not result:
-        # 1文目が既にmax_lengthを超えている場合
         result = text[:max_length].rsplit("、", 1)[0]
         if len(result) < max_length * 0.5:
             result = text[:max_length]
@@ -86,7 +82,7 @@ def truncate_at_sentence(text: str, max_length: int = MAX_SUMMARY_LENGTH) -> str
 
 
 def parse_published_date(entry) -> datetime:
-    """記事の公開日時をパースする。feedparserの解析済みデータを利用"""
+    """記事の公開日時をパースする"""
     for attr in ["published_parsed", "updated_parsed", "created_parsed"]:
         parsed = getattr(entry, attr, None)
         if parsed:
@@ -95,13 +91,11 @@ def parse_published_date(entry) -> datetime:
                 return dt.astimezone(JST)
             except (ValueError, TypeError):
                 pass
-
-    # パースできない場合は現在時刻を使用
     return datetime.now(JST)
 
 
 def generate_article_id(link: str, title: str) -> str:
-    """記事のユニークIDを生成（URL + タイトルのハッシュ）"""
+    """記事のユニークIDを生成"""
     key = f"{link or ''}{title or ''}".encode("utf-8")
     return hashlib.md5(key).hexdigest()[:12]
 
@@ -109,70 +103,94 @@ def generate_article_id(link: str, title: str) -> str:
 def matches_keywords(title: str, summary: str, keywords: list) -> bool:
     """タイトルまたは要約にキーワードが含まれるか判定"""
     if not keywords:
-        return True  # キーワード未設定ならすべて通過
+        return True
     text = f"{title} {summary}".lower()
     return any(kw.lower() in text for kw in keywords)
 
 
 # =====================================================================
-# 翻訳機能
+# 翻訳機能（二重フォールバック対応）
 # =====================================================================
 
 def contains_japanese(text: str) -> bool:
     """日本語文字（ひらがな・カタカナ・漢字）が含まれているか判定"""
+    if not text:
+        return False
     return bool(re.search(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]', text))
 
 
 def translate_text(text: str) -> str:
-    """英語テキストを日本語に翻訳する（失敗時は原文を返す）"""
+    """英語テキストを日本語に翻訳する（Google → MyMemoryの多重フォールバック）"""
     if not text or not text.strip():
         return ""
-    if not HAS_TRANSLATOR:
-        return text
-    # すでに日本語の場合はスキップ
     if contains_japanese(text):
         return text
 
-    try:
-        translated = GoogleTranslator(source='auto', target='ja').translate(text)
-        time.sleep(TRANSLATE_INTERVAL)
-        return translated if translated else text
-    except Exception as e:
-        print(f"    翻訳スキップ (原文保持): {e}")
-        return text
+    # 1. GoogleTranslator を試行
+    if HAS_TRANSLATOR:
+        try:
+            translated = GoogleTranslator(source='auto', target='ja').translate(text)
+            time.sleep(TRANSLATE_INTERVAL)
+            if translated and contains_japanese(translated):
+                return translated
+        except Exception as e:
+            print(f"    Google翻訳試行エラー: {e}")
+
+    # 2. MyMemoryTranslator を試行（フォールバック）
+    if HAS_TRANSLATOR:
+        try:
+            translated = MyMemoryTranslator(source='en-US', target='ja-JP').translate(text)
+            time.sleep(TRANSLATE_INTERVAL)
+            if translated and contains_japanese(translated):
+                return translated
+        except Exception as e:
+            print(f"    MyMemory翻訳試行エラー: {e}")
+
+    # 3. 失敗した場合は原文を返す
+    return text
 
 
 def translate_articles(articles: list) -> list:
     """英語記事を日本語に翻訳する"""
     translated_count = 0
-    total_en = sum(1 for a in articles if a.get("language") == "en" and not a.get("is_translated"))
+    # 英語記事で、かつタイトルに日本語が含まれていないものを対象とする
+    targets = [
+        a for a in articles
+        if (a.get("language") == "en" and not contains_japanese(a.get("title", "")))
+    ]
 
-    if total_en == 0:
+    if not targets:
         print("  未翻訳の英語記事はありません")
         return articles
 
-    print(f"  英語記事を翻訳中 ({total_en}件)...")
+    print(f"  英語記事を翻訳中 (対象: {len(targets)}件)...")
 
-    for article in articles:
-        if article.get("language") == "en" and not article.get("is_translated"):
-            original_title = article.get("title", "")
-            original_summary = article.get("summary", "")
+    for article in targets:
+        original_title = article.get("title_original") or article.get("title", "")
+        original_summary = article.get("summary_original") or article.get("summary", "")
 
-            # タイトル翻訳
-            ja_title = translate_text(original_title)
-            # 要約翻訳
-            ja_summary = translate_text(original_summary)
-            # 翻訳後の要約を整形
-            ja_summary = truncate_at_sentence(ja_summary)
+        ja_title = translate_text(original_title)
+        ja_summary = translate_text(original_summary)
+        ja_summary = truncate_at_sentence(ja_summary)
 
-            article["title_original"] = original_title
-            article["summary_original"] = original_summary
+        article["title_original"] = original_title
+        article["summary_original"] = original_summary
+
+        # 実際に日本語が含まれている場合のみ翻訳済みとして登録
+        if contains_japanese(ja_title):
             article["title"] = ja_title
-            article["summary"] = ja_summary
             article["is_translated"] = True
             translated_count += 1
+        else:
+            article["title"] = original_title
+            article["is_translated"] = False
 
-    print(f"  → {translated_count}件 の英語記事を日本語に翻訳しました")
+        if contains_japanese(ja_summary):
+            article["summary"] = ja_summary
+        else:
+            article["summary"] = original_summary
+
+    print(f"  → {translated_count}件 の英語記事を日本語に翻訳完了")
     return articles
 
 
@@ -203,16 +221,13 @@ def fetch_single_feed(source: dict, keywords: list) -> list:
             if not title:
                 continue
 
-            # 要約を取得・クリーンアップ
             raw_summary = entry.get("summary", "") or entry.get("description", "")
             summary = clean_html(raw_summary)
             summary = truncate_at_sentence(summary)
 
-            # キーワードフィルタリング
             if not matches_keywords(title, summary, keywords):
                 continue
 
-            # 日付をパース
             published = parse_published_date(entry)
 
             articles.append({
@@ -253,7 +268,6 @@ def fetch_all_feeds(sources_config: dict) -> list:
         articles = fetch_single_feed(source, keywords)
         all_articles.extend(articles)
 
-        # サーバーへの負荷軽減
         time.sleep(FETCH_INTERVAL)
 
     return all_articles
@@ -271,13 +285,11 @@ def deduplicate(articles: list) -> list:
 
     for article in articles:
         link = article.get("link", "")
-        title = article.get("title_original", article.get("title", ""))
+        title = article.get("title_original") or article.get("title", "")
 
-        # URL重複チェック
         if link and link in seen_links:
             continue
 
-        # タイトル完全一致チェック
         title_normalized = re.sub(r"\s+", "", title.lower())
         if title_normalized in seen_titles:
             continue
@@ -328,13 +340,11 @@ def merge_and_prune(new_articles: list, archived: list, days: int = ARCHIVE_DAYS
             existing_map[article["id"]] = article
             added += 1
 
-    # 期限切れの記事を削除
     cutoff = (datetime.now(JST) - timedelta(days=days)).strftime("%Y-%m-%d")
     before_count = len(archived)
     archived = [a for a in archived if a.get("published_date", "") >= cutoff]
     pruned = before_count - len(archived)
 
-    # 日付の新しい順にソート
     archived.sort(key=lambda a: a.get("published", ""), reverse=True)
 
     print(f"  新規追加: {added}件 / 期限切れ削除: {pruned}件")
@@ -383,7 +393,6 @@ def get_unique_categories(articles: list) -> list:
     """記事からユニークなカテゴリ一覧を取得"""
     categories = []
     seen = set()
-    # 出現順を維持
     for article in articles:
         cat = article.get("category", "その他")
         if cat not in seen:
@@ -429,7 +438,6 @@ def main():
     print("AIニュースまとめ - 自動生成")
     print("=" * 50)
 
-    # パス設定（このスクリプトの親ディレクトリ = プロジェクトルート）
     base_dir = Path(__file__).resolve().parent.parent
     sources_path = base_dir / "scripts" / "sources.yml"
     archive_path = base_dir / "data" / "archive.json"
@@ -463,7 +471,7 @@ def main():
     print(f"  既存アーカイブ: {len(archived)}件")
     all_articles = merge_and_prune(new_articles, archived)
 
-    # 5. 英語記事の日本語翻訳（未翻訳のもののみ）
+    # 5. 英語記事の日本語翻訳（未翻訳のものを対象に翻訳）
     print("\n[5/6] 翻訳処理...")
     all_articles = translate_articles(all_articles)
     save_archive(str(archive_path), all_articles)

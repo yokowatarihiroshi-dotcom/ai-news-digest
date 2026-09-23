@@ -20,6 +20,12 @@ sources:
     language: "ja"
     enabled: true
 
+  - name: "ZDNET Japan AI"
+    url: "https://japan.zdnet.com/rss/news/ai/"
+    category: "活用事例"
+    language: "ja"
+    enabled: true
+
   - name: "CNET Japan"
     url: "https://japan.cnet.com/rss/index.rdf"
     category: "ビジネス"
@@ -49,16 +55,14 @@ sources:
     category: "活用事例"
     language: "ja"
     enabled: true
-    # RSSフィードが存在しない場合は enabled: false に変更してください
 
   - name: "AINOW"
     url: "https://ainow.ai/feed/"
     category: "活用事例"
     language: "ja"
     enabled: true
-    # RSSフィードが存在しない場合は enabled: false に変更してください
 
-  # ===== 英語ソース =====
+  # ===== 英語ソース（自動日本語翻訳対象） =====
 
   - name: "TechCrunch AI"
     url: "https://techcrunch.com/category/artificial-intelligence/feed/"
@@ -91,8 +95,6 @@ sources:
     enabled: true
 
 # AI関連キーワード（記事フィルタリング用）
-# タイトルまたは要約にこれらのキーワードが含まれる記事を優先的に表示します。
-# 空リストにすると、すべての記事をフィルタリングなしで表示します。
 keywords:
   ja:
     - "AI"
