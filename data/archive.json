@@ -1,5 +1,47 @@
 [
   {
+    "id": "c4adb071fe0b",
+    "title": "MetaのAIエージェントは、私のお金を使うのに優れたかわいい小さな男です",
+    "link": "https://www.theverge.com/ai-artificial-intelligence/999526/meta-muse-ai-agent-hands-on-shopping",
+    "summary": "現代の生活には、終わりのない、自動入力されたTo - Doリストが付属しています。私がまったく何もせず、自分のビジネスに気を配り、突然何かを処理する必要があることに驚かされることはありません。",
+    "source": "The Verge AI",
+    "category": "ビジネス",
+    "language": "en",
+    "is_translated": true,
+    "published": "2026-09-24T04:00:00+09:00",
+    "published_date": "2026-09-24",
+    "title_original": "Meta’s AI agent is a cute little guy who’s great at spending my money",
+    "summary_original": "Modern life comes with an unending, auto-populating to-do list.It never ceases to amaze me how I can be doing nothing at all, minding my own business, and suddenly something needs to be taken care of."
+  },
+  {
+    "id": "972a38ba0947",
+    "title": "Anthropicのバイオラボは、CRISPRと比較して発見しました",
+    "link": "https://www.theverge.com/ai-artificial-intelligence/999470/anthropic-biolab-claude-crispr",
+    "summary": "Anthropicによると、同社のAI Claudeは、強力な遺伝子編集ツールCRISPRの背後にある機械に似た新しい酵素システムを「自律的に発見」したという。",
+    "source": "The Verge AI",
+    "category": "ビジネス",
+    "language": "en",
+    "is_translated": true,
+    "published": "2026-09-24T03:00:00+09:00",
+    "published_date": "2026-09-24",
+    "title_original": "Anthropic&#8217;s biolab made a discovery it&#8217;s comparing to Crispr",
+    "summary_original": "Anthropic says its AI Claude has \"autonomously discovered\" a new enzyme system similar to machinery behind the powerful gene-editing tool Crispr."
+  },
+  {
+    "id": "61339d41c564",
+    "title": "ChatGPTモバイルアプリには、音声ベースのエージェント機能が搭載されています",
+    "link": "https://techcrunch.com/2026/09/23/chatgpt-mobile-app-gets-voice-based-agentic-features/",
+    "summary": "ProとPlusのユーザーは、スマートフォンの[仕事]タブを使用してエージェントタスクを完了できます。",
+    "source": "TechCrunch AI",
+    "category": "ビジネス",
+    "language": "en",
+    "is_translated": true,
+    "published": "2026-09-24T02:00:00+09:00",
+    "published_date": "2026-09-24",
+    "title_original": "ChatGPT mobile app gets voice-based agentic features",
+    "summary_original": "Pro and Plus users will be able to use the Work tab on their phones to complete agentic tasks."
+  },
+  {
     "id": "2e88b4ca8ee8",
     "title": "毎日AIを使っているアメリカ人でさえ、それを心配している",
     "link": "https://techcrunch.com/2026/09/23/even-americans-who-use-ai-every-day-are-worried-about-it/",

@@ -25,7 +25,6 @@
             --badge-research: #ff375f;
             --badge-other: #8e8e93;
             --card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-            --read-opacity: 0.45;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -101,6 +100,35 @@
             white-space: nowrap;
         }
 
+        /* ===== サブバー（未読切り替え等） ===== */
+        .sub-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px 0;
+        }
+
+        .toggle-btn {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            user-select: none;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: var(--accent);
+            color: #ffffff;
+            border-color: var(--accent);
+        }
+
         /* ===== カテゴリフィルター ===== */
         .filter-bar {
             display: flex;
@@ -154,19 +182,16 @@
             background: var(--bg);
         }
 
-        /* ===== 記事カード ===== */
+        /* ===== 記事カード（通常） ===== */
         .card {
             background: var(--card-bg);
             border-radius: 14px;
             padding: 16px;
             margin-bottom: 10px;
             box-shadow: var(--card-shadow);
-            transition: opacity 0.3s ease;
+            border: 1px solid transparent;
+            transition: all 0.25s ease;
             position: relative;
-        }
-
-        .card.read {
-            opacity: var(--read-opacity);
         }
 
         .card-top {
@@ -184,6 +209,7 @@
             font-weight: 600;
             color: #ffffff;
             flex-shrink: 0;
+            transition: all 0.25s;
         }
 
         .badge-活用事例 { background: var(--badge-usecase); }
@@ -214,6 +240,7 @@
             line-height: 1.45;
             margin-bottom: 6px;
             color: var(--text);
+            transition: all 0.25s;
         }
 
         .card-title a {
@@ -230,6 +257,7 @@
             -webkit-line-clamp: 4;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            transition: all 0.25s;
         }
 
         .card-footer {
@@ -250,17 +278,49 @@
             font-size: 12px;
             color: var(--text-tertiary);
             cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 6px;
+            padding: 5px 10px;
+            border-radius: 8px;
             border: 1px solid var(--border);
             background: transparent;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        /* ===== 記事カード（既読時・劇的なビジュアル変化） ===== */
+        .card.read {
+            opacity: 0.35;
+            background: rgba(128, 128, 128, 0.06);
+            border: 1px dashed var(--border);
+            box-shadow: none;
+        }
+
+        .card.read .card-title {
+            color: var(--text-tertiary);
+            text-decoration: line-through;
+            text-decoration-color: var(--text-tertiary);
+        }
+
+        .card.read .badge {
+            filter: grayscale(100%);
+            opacity: 0.4;
+        }
+
+        .card.read .card-summary {
+            color: var(--text-tertiary);
         }
 
         .read-check.checked {
-            color: var(--badge-usecase);
+            color: #ffffff;
+            background: var(--badge-usecase);
             border-color: var(--badge-usecase);
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(52, 199, 89, 0.3);
+        }
+
+        /* 「未読のみ」モードで既読カードを非表示 */
+        body.hide-read .card.read {
+            display: none !important;
         }
 
         /* ===== 空状態 ===== */
@@ -288,7 +348,6 @@
             line-height: 1.7;
         }
 
-        /* ===== アニメーション ===== */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(8px); }
             to   { opacity: 1; transform: translateY(0); }
@@ -297,9 +356,6 @@
         .card {
             animation: fadeIn 0.3s ease forwards;
         }
-
-        .date-section:nth-child(1) .card { animation-delay: 0s; }
-        .date-section:nth-child(2) .card { animation-delay: 0.05s; }
     </style>
 </head>
 <body>
@@ -309,14 +365,15 @@
         <div class="header-top">
             <div>
                 <div class="header-title">🤖 AIニュースまとめ</div>
-                <div class="header-meta">最終更新: 2026年9月24日 02:01</div>
+                <div class="header-meta">最終更新: 2026年9月24日 04:08</div>
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div id="google_translate_element"></div>
-                <div class="article-count">65件</div>
+                <div class="article-count">68件</div>
             </div>
         </div>
     </div>
+
     <script type="text/javascript">
         function googleTranslateElementInit() {
             new google.translate.TranslateElement({
@@ -328,6 +385,13 @@
         }
     </script>
     <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+    <!-- サブバー -->
+    <div class="sub-bar">
+        <button class="toggle-btn" id="unreadToggle" onclick="toggleHideRead(this)">
+            👁️ 未読のみ表示
+        </button>
+    </div>
 
     <!-- カテゴリフィルター -->
     <div class="filter-bar">
@@ -358,7 +422,79 @@
         
             
             <div class="date-section">
-                <div class="date-header">📅 今日（3件）</div>
+                <div class="date-header">📅 今日（6件）</div>
+                
+                <div class="card" data-category="ビジネス" data-id="c4adb071fe0b">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">The Verge AI</span>
+                        
+                        <span class="lang-badge">海外（翻訳）</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.theverge.com/ai-artificial-intelligence/999526/meta-muse-ai-agent-hands-on-shopping" target="_blank" rel="noopener">MetaのAIエージェントは、私のお金を使うのに優れたかわいい小さな男です</a>
+                    </div>
+                    
+                    <div class="card-summary">現代の生活には、終わりのない、自動入力されたTo - Doリストが付属しています。私がまったく何もせず、自分のビジネスに気を配り、突然何かを処理する必要があることに驚かされることはありません。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.theverge.com/ai-artificial-intelligence/999526/meta-muse-ai-agent-hands-on-shopping" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('c4adb071fe0b', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="972a38ba0947">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">The Verge AI</span>
+                        
+                        <span class="lang-badge">海外（翻訳）</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://www.theverge.com/ai-artificial-intelligence/999470/anthropic-biolab-claude-crispr" target="_blank" rel="noopener">Anthropicのバイオラボは、CRISPRと比較して発見しました</a>
+                    </div>
+                    
+                    <div class="card-summary">Anthropicによると、同社のAI Claudeは、強力な遺伝子編集ツールCRISPRの背後にある機械に似た新しい酵素システムを「自律的に発見」したという。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://www.theverge.com/ai-artificial-intelligence/999470/anthropic-biolab-claude-crispr" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('972a38ba0947', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" data-category="ビジネス" data-id="61339d41c564">
+                    <div class="card-top">
+                        <span class="badge badge-ビジネス">ビジネス</span>
+                        <span class="source-label">TechCrunch AI</span>
+                        
+                        <span class="lang-badge">海外（翻訳）</span>
+                        
+                    </div>
+                    <div class="card-title">
+                        <a href="https://techcrunch.com/2026/09/23/chatgpt-mobile-app-gets-voice-based-agentic-features/" target="_blank" rel="noopener">ChatGPTモバイルアプリには、音声ベースのエージェント機能が搭載されています</a>
+                    </div>
+                    
+                    <div class="card-summary">ProとPlusのユーザーは、スマートフォンの[仕事]タブを使用してエージェントタスクを完了できます。</div>
+                    
+                    <div class="card-footer">
+                        <a class="read-link" href="https://techcrunch.com/2026/09/23/chatgpt-mobile-app-gets-voice-based-agentic-features/" target="_blank" rel="noopener">
+                            元記事を読む →
+                        </a>
+                        <button class="read-check" onclick="toggleRead('61339d41c564', this)" title="既読にする">
+                            ✓ 既読
+                        </button>
+                    </div>
+                </div>
                 
                 <div class="card" data-category="ビジネス" data-id="2e88b4ca8ee8">
                     <div class="card-top">
@@ -1896,8 +2032,8 @@
     </div>
 
     <script>
-        // ===== 既読管理（localStorage） =====
         const STORAGE_KEY = 'ai-news-read-articles';
+        const HIDE_READ_KEY = 'ai-news-hide-read';
 
         function getReadArticles() {
             try {
@@ -1910,9 +2046,7 @@
         function saveReadArticles(data) {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            } catch {
-                // localStorage が使えない環境では無視
-            }
+            } catch {}
         }
 
         function toggleRead(articleId, button) {
@@ -1932,7 +2066,14 @@
             saveReadArticles(readArticles);
         }
 
-        // ページ読み込み時に既読状態を復元
+        function toggleHideRead(btn) {
+            const isHiding = document.body.classList.toggle('hide-read');
+            btn.classList.toggle('active', isHiding);
+            try {
+                localStorage.setItem(HIDE_READ_KEY, isHiding ? '1' : '0');
+            } catch {}
+        }
+
         function restoreReadState() {
             const readArticles = getReadArticles();
             document.querySelectorAll('.card').forEach(card => {
@@ -1943,6 +2084,15 @@
                     if (btn) btn.classList.add('checked');
                 }
             });
+
+            // 未読のみ表示設定の復元
+            try {
+                if (localStorage.getItem(HIDE_READ_KEY) === '1') {
+                    document.body.classList.add('hide-read');
+                    const toggleBtn = document.getElementById('unreadToggle');
+                    if (toggleBtn) toggleBtn.classList.add('active');
+                }
+            } catch {}
 
             // 7日以上前の既読データを掃除
             const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -1956,13 +2106,10 @@
             if (cleaned) saveReadArticles(readArticles);
         }
 
-        // ===== カテゴリフィルター =====
         function filterCategory(category, chip) {
-            // チップのアクティブ状態を更新
             document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
 
-            // カードの表示/非表示
             document.querySelectorAll('.card').forEach(card => {
                 if (category === 'all' || card.dataset.category === category) {
                     card.style.display = '';
@@ -1971,14 +2118,12 @@
                 }
             });
 
-            // 空の日付セクションを非表示
             document.querySelectorAll('.date-section').forEach(section => {
                 const visibleCards = section.querySelectorAll('.card:not([style*="display: none"])');
                 section.style.display = visibleCards.length > 0 ? '' : 'none';
             });
         }
 
-        // 初期化
         document.addEventListener('DOMContentLoaded', restoreReadState);
     </script>
 </body>
