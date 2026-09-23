@@ -1,0 +1,53 @@
+# GitHub Actionsワークフロー: AIニュースまとめ 自動生成
+#
+# 毎朝7:00（日本時間）に自動実行し、AIニュースを収集してHTMLページを更新します。
+# 手動実行ボタン（workflow_dispatch）からいつでも実行できます。
+
+name: AIニュースまとめ 自動更新
+
+on:
+  # 定時実行: UTC 22:00 = 日本時間 翌朝 7:00
+  schedule:
+    - cron: '0 22 * * *'
+
+  # 手動実行ボタン（GitHub上の「Run workflow」ボタンから実行可能）
+  workflow_dispatch:
+
+# 書き込み権限を付与（生成されたHTMLをリポジトリにコミットするため）
+permissions:
+  contents: write
+
+jobs:
+  generate-news:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. リポジトリのコードを取得
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      # 2. Python環境をセットアップ
+      - name: Python 3.12 をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 3. Pythonライブラリをインストール
+      - name: 依存パッケージをインストール
+        run: |
+          pip install --upgrade pip
+          pip install -r scripts/requirements.txt
+
+      # 4. ニュース取得・HTML生成スクリプトを実行
+      - name: AIニュースを取得してHTMLを生成
+        run: python scripts/fetch_news.py
+
+      # 5. 生成されたファイルをコミット＆プッシュ
+      - name: 変更をコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/ data/
+          # 変更がある場合のみコミット
+          git diff --staged --quiet || git commit -m "📰 $(TZ=Asia/Tokyo date '+%Y/%m/%d %H:%M') のAIニュースまとめを更新"
+          git push

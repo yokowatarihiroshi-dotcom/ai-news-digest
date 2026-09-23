@@ -1,0 +1,125 @@
+# AIニュースまとめ - ニュースソース設定
+#
+# このファイルでRSSフィードの追加・削除ができます。
+# enabled: false にすると、そのソースを一時的に無効化できます。
+#
+# カテゴリ: 活用事例 / ビジネス / ツール / 研究
+
+sources:
+  # ===== 日本語ソース =====
+
+  - name: "ITmedia AI+"
+    url: "https://rss.itmedia.co.jp/rss/2.0/aiplus.xml"
+    category: "活用事例"
+    language: "ja"
+    enabled: true
+
+  - name: "ITmedia NEWS"
+    url: "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml"
+    category: "ビジネス"
+    language: "ja"
+    enabled: true
+
+  - name: "CNET Japan"
+    url: "https://japan.cnet.com/rss/index.rdf"
+    category: "ビジネス"
+    language: "ja"
+    enabled: true
+
+  - name: "Impress Watch AI"
+    url: "https://www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf"
+    category: "ツール"
+    language: "ja"
+    enabled: true
+
+  - name: "Gigazine"
+    url: "https://gigazine.net/news/rss_2.0/"
+    category: "ビジネス"
+    language: "ja"
+    enabled: true
+
+  - name: "Ascii.jp テクノロジー"
+    url: "https://ascii.jp/rss.xml"
+    category: "ツール"
+    language: "ja"
+    enabled: true
+
+  - name: "Ledge.ai"
+    url: "https://ledge.ai/feed"
+    category: "活用事例"
+    language: "ja"
+    enabled: true
+    # RSSフィードが存在しない場合は enabled: false に変更してください
+
+  - name: "AINOW"
+    url: "https://ainow.ai/feed/"
+    category: "活用事例"
+    language: "ja"
+    enabled: true
+    # RSSフィードが存在しない場合は enabled: false に変更してください
+
+  # ===== 英語ソース =====
+
+  - name: "TechCrunch AI"
+    url: "https://techcrunch.com/category/artificial-intelligence/feed/"
+    category: "ビジネス"
+    language: "en"
+    enabled: true
+
+  - name: "The Verge AI"
+    url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"
+    category: "ビジネス"
+    language: "en"
+    enabled: true
+
+  - name: "MIT Technology Review"
+    url: "https://www.technologyreview.com/feed/"
+    category: "研究"
+    language: "en"
+    enabled: true
+
+  - name: "VentureBeat AI"
+    url: "https://venturebeat.com/category/ai/feed/"
+    category: "活用事例"
+    language: "en"
+    enabled: true
+
+  - name: "Ars Technica AI"
+    url: "https://feeds.arstechnica.com/arstechnica/technology-lab"
+    category: "ツール"
+    language: "en"
+    enabled: true
+
+# AI関連キーワード（記事フィルタリング用）
+# タイトルまたは要約にこれらのキーワードが含まれる記事を優先的に表示します。
+# 空リストにすると、すべての記事をフィルタリングなしで表示します。
+keywords:
+  ja:
+    - "AI"
+    - "人工知能"
+    - "機械学習"
+    - "深層学習"
+    - "生成AI"
+    - "ChatGPT"
+    - "GPT"
+    - "Gemini"
+    - "Claude"
+    - "LLM"
+    - "大規模言語モデル"
+    - "自然言語処理"
+    - "画像生成"
+    - "自動化"
+    - "ディープラーニング"
+  en:
+    - "AI"
+    - "artificial intelligence"
+    - "machine learning"
+    - "deep learning"
+    - "generative AI"
+    - "ChatGPT"
+    - "GPT"
+    - "Gemini"
+    - "Claude"
+    - "LLM"
+    - "large language model"
+    - "neural network"
