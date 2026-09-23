@@ -338,8 +338,8 @@
                     <div class="card-top">
                         <span class="badge badge-{{ article.category }}">{{ article.category }}</span>
                         <span class="source-label">{{ article.source }}</span>
-                        {% if article.language == 'en' %}
-                        <span class="lang-badge">EN</span>
+                        {% if article.is_translated or article.language == 'en' %}
+                        <span class="lang-badge">海外（翻訳）</span>
                         {% endif %}
                     </div>
                     <div class="card-title">

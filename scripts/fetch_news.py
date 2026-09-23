@@ -5,7 +5,8 @@ AIニュースまとめ - RSS自動収集・HTML生成スクリプト
 毎朝GitHub Actionsで実行され、複数のAIニュースサイトからRSSフィードを取得し、
 スマートフォンで読みやすいHTMLページを自動生成します。
 
-外部AI APIは一切使用しません。
+外部有料AI APIは一切使用しません。
+英語記事は完全無料のオープンライブラリ（deep-translator）を用いて日本語へ自動翻訳します。
 """
 
 import hashlib
@@ -21,6 +22,13 @@ import yaml
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
 
+# deep-translator の安全なインポート
+try:
+    from deep_translator import GoogleTranslator
+    HAS_TRANSLATOR = True
+except ImportError:
+    HAS_TRANSLATOR = False
+
 
 # ===== 定数 =====
 JST = timezone(timedelta(hours=9))
@@ -28,6 +36,7 @@ MAX_SUMMARY_LENGTH = 200   # 要約の最大文字数
 ARCHIVE_DAYS = 7            # アーカイブ保持日数
 MAX_ARTICLES_PER_SOURCE = 15  # ソースあたりの最大取得記事数
 FETCH_INTERVAL = 1.0        # ソース間の待機時間（秒）
+TRANSLATE_INTERVAL = 0.4    # 翻訳API間の待機時間（秒）
 
 
 # =====================================================================
@@ -106,6 +115,68 @@ def matches_keywords(title: str, summary: str, keywords: list) -> bool:
 
 
 # =====================================================================
+# 翻訳機能
+# =====================================================================
+
+def contains_japanese(text: str) -> bool:
+    """日本語文字（ひらがな・カタカナ・漢字）が含まれているか判定"""
+    return bool(re.search(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]', text))
+
+
+def translate_text(text: str) -> str:
+    """英語テキストを日本語に翻訳する（失敗時は原文を返す）"""
+    if not text or not text.strip():
+        return ""
+    if not HAS_TRANSLATOR:
+        return text
+    # すでに日本語の場合はスキップ
+    if contains_japanese(text):
+        return text
+
+    try:
+        translated = GoogleTranslator(source='auto', target='ja').translate(text)
+        time.sleep(TRANSLATE_INTERVAL)
+        return translated if translated else text
+    except Exception as e:
+        print(f"    翻訳スキップ (原文保持): {e}")
+        return text
+
+
+def translate_articles(articles: list) -> list:
+    """英語記事を日本語に翻訳する"""
+    translated_count = 0
+    total_en = sum(1 for a in articles if a.get("language") == "en" and not a.get("is_translated"))
+
+    if total_en == 0:
+        print("  未翻訳の英語記事はありません")
+        return articles
+
+    print(f"  英語記事を翻訳中 ({total_en}件)...")
+
+    for article in articles:
+        if article.get("language") == "en" and not article.get("is_translated"):
+            original_title = article.get("title", "")
+            original_summary = article.get("summary", "")
+
+            # タイトル翻訳
+            ja_title = translate_text(original_title)
+            # 要約翻訳
+            ja_summary = translate_text(original_summary)
+            # 翻訳後の要約を整形
+            ja_summary = truncate_at_sentence(ja_summary)
+
+            article["title_original"] = original_title
+            article["summary_original"] = original_summary
+            article["title"] = ja_title
+            article["summary"] = ja_summary
+            article["is_translated"] = True
+            translated_count += 1
+
+    print(f"  → {translated_count}件 の英語記事を日本語に翻訳しました")
+    return articles
+
+
+# =====================================================================
 # RSS取得
 # =====================================================================
 
@@ -152,6 +223,7 @@ def fetch_single_feed(source: dict, keywords: list) -> list:
                 "source": name,
                 "category": source.get("category", "その他"),
                 "language": language,
+                "is_translated": False,
                 "published": published.isoformat(),
                 "published_date": published.strftime("%Y-%m-%d"),
             })
@@ -199,7 +271,7 @@ def deduplicate(articles: list) -> list:
 
     for article in articles:
         link = article.get("link", "")
-        title = article.get("title", "")
+        title = article.get("title_original", article.get("title", ""))
 
         # URL重複チェック
         if link and link in seen_links:
@@ -247,13 +319,13 @@ def save_archive(archive_path: str, articles: list):
 
 def merge_and_prune(new_articles: list, archived: list, days: int = ARCHIVE_DAYS) -> list:
     """新しい記事をアーカイブとマージし、古い記事を削除"""
-    existing_ids = {a["id"] for a in archived}
+    existing_map = {a["id"]: a for a in archived}
 
     added = 0
     for article in new_articles:
-        if article["id"] not in existing_ids:
+        if article["id"] not in existing_map:
             archived.append(article)
-            existing_ids.add(article["id"])
+            existing_map[article["id"]] = article
             added += 1
 
     # 期限切れの記事を削除
@@ -365,7 +437,7 @@ def main():
     output_path = str(base_dir / "docs" / "index.html")
 
     # 1. ソース設定を読み込み
-    print("\n[1/5] ソース設定を読み込み中...")
+    print("\n[1/6] ソース設定を読み込み中...")
     with open(sources_path, "r", encoding="utf-8") as f:
         sources_config = yaml.safe_load(f)
 
@@ -376,25 +448,29 @@ def main():
     print(f"  有効なソース: {enabled_count}件")
 
     # 2. RSSフィードを取得
-    print("\n[2/5] RSSフィードを取得中...")
+    print("\n[2/6] RSSフィードを取得中...")
     new_articles = fetch_all_feeds(sources_config)
     print(f"  取得合計: {len(new_articles)}件")
 
     # 3. 重複排除
-    print("\n[3/5] 重複チェック...")
+    print("\n[3/6] 重複チェック...")
     new_articles = deduplicate(new_articles)
     print(f"  重複排除後: {len(new_articles)}件")
 
     # 4. アーカイブとマージ
-    print("\n[4/5] アーカイブ処理...")
+    print("\n[4/6] アーカイブ処理...")
     archived = load_archive(str(archive_path))
     print(f"  既存アーカイブ: {len(archived)}件")
     all_articles = merge_and_prune(new_articles, archived)
+
+    # 5. 英語記事の日本語翻訳（未翻訳のもののみ）
+    print("\n[5/6] 翻訳処理...")
+    all_articles = translate_articles(all_articles)
     save_archive(str(archive_path), all_articles)
     print(f"  最終記事数: {len(all_articles)}件")
 
-    # 5. HTML生成
-    print("\n[5/5] HTMLページを生成中...")
+    # 6. HTML生成
+    print("\n[6/6] HTMLページを生成中...")
     render_html(all_articles, template_dir, output_path)
 
     print("\n" + "=" * 50)
